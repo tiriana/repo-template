@@ -1,0 +1,7 @@
+# Guards against committing an assembled profile. The files copied into a
+# project come from common/ and profiles/, never from this root.
+node_modules/
+.venv/
+dist/
+__pycache__/
+*.log

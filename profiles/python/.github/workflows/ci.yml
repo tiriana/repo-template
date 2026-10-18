@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.12"
+          - "3.13"
+          - "3.14"
+    env:
+      HUSKY: "0"
+      # Without this uv would always use the interpreter pinned in
+      # .python-version and the matrix would be decorative.
+      UV_PYTHON: ${{ matrix.python-version }}
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        # setup-uv publishes no floating major tag, so it is pinned exactly.
+        # Dependabot updates it through the github-actions ecosystem.
+        uses: astral-sh/setup-uv@v10.3.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install the package and its dependencies
+        run: uv sync --all-extras
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Check formatting
+        run: uv run ruff format --check .
+
+      - name: Test
+        run: uv run pytest

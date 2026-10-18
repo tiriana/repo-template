@@ -1,0 +1,57 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read
+
+jobs:
+  # Building and publishing are separate jobs so that only the job that talks
+  # to PyPI is granted an OIDC token.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the released tag
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.0
+
+      - name: Stamp the version from the release tag
+        run: python3 scripts/set_version.py "${TAG#v}"
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+
+      - name: Build
+        run: uv build
+
+      - name: Upload the distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/your-project-name
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Download the distribution
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish
+        # Trusted publishing: identity comes from the OIDC token, so no API
+        # token is stored in the repository.
+        uses: pypa/gh-action-pypi-publish@release/v1
